@@ -1,4 +1,4 @@
-import chromium from "chrome-aws-lambda";
+const chromium = require("chrome-aws-lambda");
 
 /**
  * @param {string} url
@@ -17,25 +17,27 @@ async function screenshot(url, { width, height }) {
 	let page = await browser.newPage();
 	page.setViewport({ width, height });
 	await page.goto(url, { waitUntil: "networkidle0" });
-	await page.$eval("#root > div.jss1", (el) => el?.style?.display = "none"); // hide controls
-	
-	let data = await page.screenshot({ type: "jpeg", quality: 100 });
+	await page.$eval("#root > div.jss1", (el) => el.style.display = "none"); // hide controls
+
+	let data = await page.screenshot({
+		type: "jpeg",
+		quality: 100,
+		encoding: "base64",
+	});
 
 	await browser.close();
 	return data;
 }
 
 /** @type {import("aws-lambda").APIGatewayProxyHandler} */
-export async function handler(event) {
-	if (event.httpMethod !== "POST") {
-		return { statusCode: 405, body: "Method Not Allowed" };
-	}
+async function handler(event) {
 	let { url, width = 800, height = 418 } = JSON.parse(event.body);
-	let buffer = await screenshot(url, { width, height });
 	return {
 		statusCode: 200,
 		headers: { "Content-Type": "image/jpeg" },
-		body: buffer.toString("base64"),
+		body: await screenshot(url, { width, height }),
 		isBase64Encoded: true,
 	};
 }
+
+exports.handler = handler;
