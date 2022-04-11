@@ -1,11 +1,14 @@
-const chromium = require("chrome-aws-lambda");
+let chromium = require("chrome-aws-lambda");
+let { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+let { v4: uuid } = require("@lukeed/uuid");
+
+let s3 = new S3Client({ region: "us-east-1" });
 
 /**
- * @param {string} url
- * @param {{ width: number, height: number }} opts
+ * @param {url: string, width?: number, height?: number }} opts
  * @returns {Promise<Buffer>}
  */
-async function screenshot(url, { width, height }) {
+async function screenshot({ url, width = 800, height = 418 }) {
 	let browser = await chromium.puppeteer.launch({
 		args: chromium.args,
 		defaultViewport: chromium.defaultViewport,
@@ -19,24 +22,31 @@ async function screenshot(url, { width, height }) {
 	await page.goto(url, { waitUntil: "networkidle0" });
 	await page.$eval("#root > div.jss1", (el) => el.style.display = "none"); // hide controls
 
-	let data = await page.screenshot({
+	let buffer = await page.screenshot({
 		type: "jpeg",
 		quality: 100,
-		encoding: "base64",
 	});
 
 	await browser.close();
-	return data;
+	return buffer;
 }
 
-/** @type {import("aws-lambda").APIGatewayProxyHandler} */
 async function handler(event) {
-	let { url, width = 800, height = 418 } = JSON.parse(event.body);
+	if (event.httpMethod !== "POST") {
+		return { statusCode: 405, body: "Method Not Allowed" };
+	}
+	let filename = uuid() + ".jpeg";
+	let command = new PutObjectCommand({
+		Bucket: "vizarr-images",
+		Key: filename,
+		Body: await screenshot(JSON.parse(event.body)),
+	});
+	await s3.send(command);
 	return {
 		statusCode: 200,
-		headers: { "Content-Type": "image/jpeg" },
-		body: await screenshot(url, { width, height }),
-		isBase64Encoded: true,
+		body: JSON.stringify({
+			url: `https://vizarr-images.s3.amazonaws.com/${filename}`,
+		}),
 	};
 }
 
