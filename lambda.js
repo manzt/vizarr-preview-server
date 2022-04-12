@@ -3,6 +3,7 @@ let { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 let { v4: uuid } = require("@lukeed/uuid");
 
 let s3 = new S3Client({ region: "us-east-1" });
+let BUCKET = "vizarr-images";
 
 /**
  * @param {url: string, width?: number, height?: number }} opts
@@ -37,7 +38,7 @@ async function handler(event) {
 	}
 	let filename = uuid() + ".jpeg";
 	let command = new PutObjectCommand({
-		Bucket: "vizarr-images",
+		Bucket: BUCKET,
 		Key: filename,
 		Body: await screenshot(JSON.parse(event.body)),
 	});
@@ -45,7 +46,7 @@ async function handler(event) {
 	return {
 		statusCode: 200,
 		body: JSON.stringify({
-			url: `https://vizarr-images.s3.amazonaws.com/${filename}`,
+			url: `https://${BUCKET}.s3.amazonaws.com/${filename}`,
 		}),
 	};
 }
