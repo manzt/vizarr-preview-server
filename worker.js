@@ -1,5 +1,9 @@
 let VIZARR_URL = "https://hms-dbmi.github.io/vizarr/";
 
+/**
+ * @param {string} url
+ * @returns {Promise<string>}
+ */
 async function createImage(url) {
 	let body = JSON.stringify({ url });
 	let response = await fetch(
@@ -13,6 +17,11 @@ async function createImage(url) {
 	return data.url;
 }
 
+/**
+ * @param {string} url
+ * @param {string} title [title='Vizarr']
+ * @returns {Promise<string>} HTML string
+ */
 async function html(url, title = "Vizarr") {
 	let imageUrl = await IMAGES.get(url);
 	if (!imageUrl) {
